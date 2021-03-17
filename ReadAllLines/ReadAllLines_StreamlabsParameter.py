@@ -13,14 +13,14 @@ import re
 #---------------------------
 ScriptName = "ReadAllLines"
 Website = "https://github.com/EinWesen"
-Description = "$readallines"
+Description = "$readalllines"
 Creator = "EinWesen"
-Version = "1.0.0.0"
+Version = "1.0.1.0"
 
 #---------------------------
 #   Script specic Information
 #---------------------------
-READ_ALL_LINES = "$readallines"
+READ_ALL_LINES = "$readalllines"
 paramRegEx = re.compile("\\"+READ_ALL_LINES+"\(\"(.*)\" *, *\"(.*)\"\)")
 
 #---------------------------
