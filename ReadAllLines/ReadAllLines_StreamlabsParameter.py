@@ -47,7 +47,7 @@ def Parse(parseString, userid, username, targetid, targetname, message):
 
         try:
             parseString = paramRegEx.sub(lambda m : m.group(2).join(readAllLinesFromFile(m.group(1))), parseString)
-        Exception as e:
+        except Exception as e:
             parseString = "Fehler bei " + READ_ALL_LINES + ": " + str(e)
 
     #end if READ_ALL_LINES
