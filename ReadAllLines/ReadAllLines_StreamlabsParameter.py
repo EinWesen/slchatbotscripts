@@ -7,6 +7,7 @@ clr.AddReference("IronPython.Modules.dll")
 
 #Custom
 import re
+import codecs
 
 #---------------------------
 #   [Required] Script Information
@@ -33,7 +34,8 @@ def readAllLinesFromFile(filepath):
     file1 = None
     Lines = None
     try:
-        file1 = open(filepath, 'r')        
+        #files written with $savefile seem to be UTF-8 encoded, and thats what we expect to read here
+        file1 = codecs.open(filepath, "r", "utf-8-sig")        
     except Exception as fe:
         raise
     else:
