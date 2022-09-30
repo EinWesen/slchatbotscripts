@@ -1,0 +1,138 @@
+<html>
+<head>
+    <style type="text/css">
+        body {
+            font-Size: 18px;
+            font-family: sans-serif;
+            width: 100%;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.1.slim.min.js" integrity="sha256-w8CvhFs7iHNVUtnSP0YKEg00p9Ih13rlL9zGqvLdePA=" crossorigin="anonymous"></script>
+    <script src="https://github.com/tmijs/tmi.js/releases/download/v1.8.5/tmi.min.js"></script>
+    <script>
+        jQuery(document).ready(function ($) {
+            var node_log = $(document.body);
+            var options = {
+                channel: undefined,
+                enableUserColors: true,
+                enableUserBadges: false,
+                emoteBaseSize: '1.0', //1.0, 2.0,3.0
+                emoteSize: 16,
+                autoscroll: true,
+                autodelete: true,
+                autodeleteStartPixelAmount: 500,
+                autodeleteKeepPixelAmount:90,
+            }
+
+            function replaceEmotes(message, emotes) { 
+                // based on https://github.com/tmijs/tmi.js/issues/11
+                var newMessage = message.split("");
+
+                for(var emoteIndex in emotes) {
+                    var emote = emotes[emoteIndex];
+
+                    for(var charIndexes in emote) {
+                        var emoteIndexes = emote[charIndexes];
+
+                        if(typeof emoteIndexes == "string") {
+                            emoteIndexes = emoteIndexes.split("-");
+                            emoteIndexes = [parseInt(emoteIndexes[0]), parseInt(emoteIndexes[1])];
+
+                            for(var i = emoteIndexes[0]; i <= emoteIndexes[1]; ++i) {
+                                newMessage[i] = "";
+                            }
+                            newMessage[emoteIndexes[0]] = '<img src="http://static-cdn.jtvnw.net/emoticons/v1/' + emoteIndex + '/'+options.emoteBaseSize+'"'+(options.emoteSize>0?' height="'+options.emoteSize+'" width="'+options.emoteSize+'"':'')+'>';
+                        }
+                    }
+                }
+
+                return newMessage.join("");
+            }
+
+            function appendToLog(message, tags) {
+                let $e = $('<div/>');
+                
+                if (tags) {
+                    //TODO: handle /me
+
+                    if (tags['display-name']) {                        
+                        let $u = $('<span/>').attr('class', 'usr').text(tags['display-name']);
+                        
+                        if (options.enableUserColors) {
+                            if (tags.color) {
+                                $u.css('color', tags.color);
+                            } else {
+                                ; // TODO: handle users without set color
+                            }                            
+                        }
+
+                        if (options.enableUserBadges) {
+                            ;//TODO: handle badges
+                        }                        
+
+                        $e.append($u).append($('<span/>').text(':'));
+                    }
+
+                    if (tags.emotes) {
+                        message = replaceEmotes(message, tags.emotes);
+                    }
+                }
+
+                $e.append($('<span/>').attr('class', 'msg').html(message));
+                
+                if (options.autoscroll) {
+
+                    if (options.autodelete) {
+                        let st = node_log.scrollTop() - options.autodeleteKeepPixelAmount;
+                        if (node_log.scrollTop() > options.autodeleteStartPixelAmount) {
+                            node_log.children().filter((index,elem)=> {
+                                return ($(elem).offset().top < st);
+                            }).remove();
+                        }
+                    }
+
+                    node_log.append($e);
+
+                    let ch = node_log.prop('clientHeight'), sh = node_log.prop('scrollHeight');
+                    if (sh>ch) {
+                        node_log.prop('scrollTop', sh);
+                    }
+                
+                } else {
+                    node_log.append($e);
+                    //TODO: auto delete for non scrolling
+                }            
+            }
+
+            window.appendToLog = appendToLog;
+            appendToLog("WindowLoad @" + new Date().toLocaleString());        
+            
+            let searchParams = new URLSearchParams(window.location.search);
+            for (const optionName in options) {
+                let option = searchParams.get(optionName);
+                if (option != undefined && option != '') {
+                    if (option=="true") {
+                        options[optionName] = true;
+                    } else if (option=="false") {
+                        options[optionName] = false;
+                    } else {
+                        options[optionName] = option;
+                    }
+                }              
+            }            
+
+            window.tmiCLient = new tmi.Client({
+                channels: [ options.channel ]
+            });
+              
+            window.tmiCLient.on('message', (channel, tags, message, self) => {
+                appendToLog(message, tags);
+            });
+
+            window.tmiCLient.connect();  
+        });                    
+    </script>
+</head>
+<body class="chatlog">
+</body>
+</html>
