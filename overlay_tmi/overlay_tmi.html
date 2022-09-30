@@ -18,10 +18,7 @@
                 enableUserBadges: false,
                 emoteBaseSize: '1.0', //1.0, 2.0,3.0
                 emoteSize: 16,
-                autoscroll: true,
-                autodelete: true,
-                autodeleteStartPixelAmount: 500,
-                autodeleteKeepPixelAmount:90,
+                autodelete: true
             }
 
             function replaceEmotes(message, emotes) { 
@@ -88,27 +85,14 @@
 
                 $e.append($('<span/>').attr('class', 'msg').html(message));
                 
-                if (options.autoscroll) {
+                node_log.append($e);
 
-                    if (options.autodelete) {
-                        let st = node_log.scrollTop() - options.autodeleteKeepPixelAmount;
-                        if (node_log.scrollTop() > options.autodeleteStartPixelAmount) {
-                            node_log.children().filter((index,elem)=> {
-                                return ($(elem).offset().top < st);
-                            }).remove();
-                        }
+                if (options.autodelete) {
+                    let children = node_log.children('div:not(:last)');
+                    while ((children.length > 0) && (node_log.prop('scrollHeight') > node_log.prop('clientHeight'))) {
+                        children.eq(0).remove();
+                        children = node_log.children('div:not(:last)')
                     }
-
-                    node_log.append($e);
-
-                    let ch = node_log.prop('clientHeight'), sh = node_log.prop('scrollHeight');
-                    if (sh>ch) {
-                        node_log.prop('scrollTop', sh);
-                    }
-                
-                } else {
-                    node_log.append($e);
-                    //TODO: auto delete for non scrolling
                 }            
             }
             
