@@ -53,7 +53,8 @@
                 let $e = $('<div/>');
                 
                 if (tags) {
-                    //TODO: handle /me
+                    
+                    let isActionMessage = (tags['message-type'] == 'action');
 
                     if (tags['display-name']) {                        
                         let $u = $('<span/>').attr('class', 'usr').text(tags['display-name']);
@@ -70,11 +71,18 @@
                             ;//TODO: handle badges
                         }                        
 
-                        $e.append($u).append($('<span/>').text(':'));
+                        $e.append($u).append($('<span/>').text(isActionMessage?' ':': '));
                     }
 
                     if (tags.emotes) {
                         message = replaceEmotes(message, tags.emotes);
+                    }
+                    
+                    if (isActionMessage) {
+                        $e.addClass('action');
+                        if (options.enableActionColors && options.enableUserColors) {
+                            $e.css('color', $e.find('span.usr').css('color'));
+                        }
                     }
                 }
 
@@ -103,8 +111,7 @@
                     //TODO: auto delete for non scrolling
                 }            
             }
-
-            window.appendToLog = appendToLog;
+            
             appendToLog("WindowLoad @" + new Date().toLocaleString());        
             
             let searchParams = new URLSearchParams(window.location.search);
