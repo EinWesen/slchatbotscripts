@@ -4,23 +4,28 @@
         body {
             font-Size: 18px;
             font-family: sans-serif;
-            width: 100%;
         }
     </style>
-    <script src="https://code.jquery.com/jquery-3.6.1.slim.min.js" integrity="sha256-w8CvhFs7iHNVUtnSP0YKEg00p9Ih13rlL9zGqvLdePA=" crossorigin="anonymous"></script>
-    <script src="https://github.com/tmijs/tmi.js/releases/download/v1.8.5/tmi.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js" integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ=" crossorigin="anonymous"></script>
+    <script src="https://github.com/tmijs/tmi.js/releases/download/v1.8.5/tmi.min.js"></script>    
     <script>
-        jQuery(document).ready(function ($) {
-            var node_log = $(document.body);
+        jQuery(document).ready(async function ($) {
+            
             var options = {
                 channel: undefined,
                 enableUserColors: true,
-                enableUserBadges: false,
+                enableUserBadges: true,
+                badgeBaseSize: 'image_url_1x',
+                enableActionColors: true,
                 emoteBaseSize: '1.0', //1.0, 2.0,3.0
                 emoteSize: 16,
                 autodelete: true,
-                autoscroll: true
+                autoscroll: true,
+                debugLogTags: false
             }
+            
+            var node_log = $(document.body);
+            var badge_sets_cache = undefined, badge_cache = {};
 
             function replaceEmotes(message, emotes) { 
                 // based on https://github.com/tmijs/tmi.js/issues/11
@@ -47,14 +52,80 @@
                 return newMessage.join("");
             }
 
-            function appendToLog(message, tags) {
+            async function get_badge_url(badgename, badge_detail, room_id) {
+
+                if (badge_sets_cache == undefined) {
+                    
+                    badge_sets_cache = {};
+                    let g_cache = {}, c_cache = {}; 
+                    
+                    try {
+                        g_cache = await $.ajax({
+                                method: 'GET',
+                                url: "https://badges.twitch.tv/v1/badges/global/display",
+                                dataType: "jsonp"
+                        });
+                        g_cache = g_cache['badge_sets'];
+                    } catch (e) {
+                        console.error("error getting global badges", e);
+                    }
+
+                    if (room_id) {
+                        try {
+                            c_cache = await $.ajax({
+                                    method: 'GET',
+                                    url: "https://badges.twitch.tv/v1/badges/channels/"+room_id+"/display",
+                                    dataType: "jsonp"
+                            });
+                            c_cache = c_cache['badge_sets'];
+                        } catch (e) {
+                            console.error("error getting global badges", e);
+                        }                    
+                    }
+                    
+                    $.extend(badge_sets_cache,g_cache, c_cache);
+                }
+                
+                // Cache the found url, mostly so that we log errors just once
+                const cacheKey = badgename+"/"+badge_detail;
+                let result = badge_cache[cacheKey];
+                if (result == undefined) {
+                    try {
+                        result = badge_sets_cache[badgename]['versions'][badge_detail][options.badgeBaseSize];
+                        badge_cache[cacheKey] = result;
+                    } catch (e) {
+                        badge_cache[cacheKey] = '';
+                        console.error('can not get badge url', badgename, badge_detail)
+                    }
+                }
+                return result;
+            }
+
+            async function appendToLog(message, tags) {
                 let $e = $('<div/>');
                 
                 if (tags) {
                     
                     let isActionMessage = (tags['message-type'] == 'action');
-
+                    
                     if (tags['display-name']) {                        
+                        
+                        if (options.enableUserBadges) {
+                            if (tags.badges) {
+                                let badge_str = '';
+                                for (badge_name in tags.badges) {
+                                    let url = await get_badge_url(badge_name, tags.badges[badge_name], tags['room-id']);
+                                    if (url) {
+                                        badge_str += '<img src="'+url+'" height="'+options.emoteSize+'" width="'+options.emoteSize+'">';
+                                    }
+                                }
+                                
+                                if (badge_str != '') {
+                                    $e.append($(badge_str));                            
+                                }
+                            }
+                        }                        
+
                         let $u = $('<span/>').attr('class', 'usr').text(tags['display-name']);
                         
                         if (options.enableUserColors) {
@@ -65,14 +136,11 @@
                             }                            
                         }
 
-                        if (options.enableUserBadges) {
-                            ;//TODO: handle badges
-                        }                        
-
                         $e.append($u).append($('<span/>').text(isActionMessage?' ':': '));
                     }
 
                     if (tags.emotes) {
+                         
                         message = replaceEmotes(message, tags.emotes);
                     }
                     
@@ -82,14 +150,15 @@
                             $e.css('color', $e.find('span.usr').css('color'));
                         }
                     }
-                    
+
                     if (tags['message-type'] == 'js-error') {
                         $e.addClass('js-error');
-                    }                    
+                    }
+
                 }
 
-                $e.append($('<span/>').attr('class', 'msg').html(message));
-                
+                $e.append($('<span/>').attr('class', 'msg').text(message));
+
                 node_log.append($e);
 
                 if (options.autodelete) {
@@ -103,10 +172,10 @@
                     if (sh>ch) {
                         node_log.prop('scrollTop', sh);
                     }                    
-                }            
+                }
             }
-            
-            appendToLog("WindowLoad @" + new Date().toLocaleString());        
+
+            appendToLog("Start Chat @ " + new Date().toLocaleString());        
             
             let searchParams = new URLSearchParams(window.location.search);
             for (const optionName in options) {
@@ -129,19 +198,19 @@
                     secure: true
                 }
             });
-              
+
             window.tmiCLient.on("reconnect", () => {
                 appendToLog("----- ~~~ -----");
-            });
-            
+            });           
+              
             window.tmiCLient.on('message', (channel, tags, message, self) => {
+                if (options.debugLogTags) console.log(tags);
                 appendToLog(message, tags);
             });
 
             window.tmiCLient.connect().catch(err => {
                 appendToLog('ERROR: ' + err, {"message-type": "js-error"});
             });  
-
         });                    
     </script>
 </head>
