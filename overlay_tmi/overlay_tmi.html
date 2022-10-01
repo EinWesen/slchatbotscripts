@@ -130,6 +130,10 @@
                 }
             });
               
+            window.tmiCLient.on("reconnect", () => {
+                appendToLog("----- ~~~ -----");
+            });
+            
             window.tmiCLient.on('message', (channel, tags, message, self) => {
                 appendToLog(message, tags);
             });
