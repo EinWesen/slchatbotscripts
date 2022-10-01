@@ -82,6 +82,10 @@
                             $e.css('color', $e.find('span.usr').css('color'));
                         }
                     }
+                    
+                    if (tags['message-type'] == 'js-error') {
+                        $e.addClass('js-error');
+                    }                    
                 }
 
                 $e.append($('<span/>').attr('class', 'msg').html(message));
@@ -119,14 +123,21 @@
             }            
 
             window.tmiCLient = new tmi.Client({
-                channels: [ options.channel ]
+                channels: [ options.channel ],
+                connection: {
+                    reconnect: true,
+                    secure: true
+                }
             });
               
             window.tmiCLient.on('message', (channel, tags, message, self) => {
                 appendToLog(message, tags);
             });
 
-            window.tmiCLient.connect();  
+            window.tmiCLient.connect().catch(err => {
+                appendToLog('ERROR: ' + err, {"message-type": "js-error"});
+            });  
+
         });                    
     </script>
 </head>
