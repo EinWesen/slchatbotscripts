@@ -18,7 +18,8 @@
                 enableUserBadges: false,
                 emoteBaseSize: '1.0', //1.0, 2.0,3.0
                 emoteSize: 16,
-                autodelete: true
+                autodelete: true,
+                autoscroll: true
             }
 
             function replaceEmotes(message, emotes) { 
@@ -93,6 +94,11 @@
                         children.eq(0).remove();
                         children = node_log.children('div:not(:last)')
                     }
+                } else if (options.autoscroll) {
+                    let ch = node_log.prop('clientHeight'), sh = node_log.prop('scrollHeight');
+                    if (sh>ch) {
+                        node_log.prop('scrollTop', sh);
+                    }                    
                 }            
             }
             
