@@ -157,8 +157,9 @@
 
                 }
 
-                $e.append($('<span/>').attr('class', 'msg').text(message));
-
+                // Should be safe, messages recieved from twitch seems to sanitized
+                $e.append($('<span/>').attr('class', 'msg').html(message)); 
+                
                 node_log.append($e);
 
                 if (options.autodelete) {
