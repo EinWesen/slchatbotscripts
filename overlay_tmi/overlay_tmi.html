@@ -44,7 +44,7 @@
                             for(var i = emoteIndexes[0]; i <= emoteIndexes[1]; ++i) {
                                 newMessage[i] = "";
                             }
-                            newMessage[emoteIndexes[0]] = '<img src="http://static-cdn.jtvnw.net/emoticons/v1/' + emoteIndex + '/'+options.emoteBaseSize+'"'+(options.emoteSize>0?' height="'+options.emoteSize+'" width="'+options.emoteSize+'"':'')+'>';
+                            newMessage[emoteIndexes[0]] = '<img src="http://static-cdn.jtvnw.net/emoticons/v1/' + emoteIndex + '/'+options.emoteBaseSize+'"'+(options.emoteSize>0?' height="'+options.emoteSize+'"':'')+'>';
                         }
                     }
                 }
@@ -116,7 +116,7 @@
                                 for (badge_name in tags.badges) {
                                     let url = await get_badge_url(badge_name, tags.badges[badge_name], tags['room-id']);
                                     if (url) {
-                                        badge_str += '<img src="'+url+'" height="'+options.emoteSize+'" width="'+options.emoteSize+'">';
+                                        badge_str += '<img src="'+url+'" height="'+options.emoteSize+'">';
                                     }
                                 }
                                 
