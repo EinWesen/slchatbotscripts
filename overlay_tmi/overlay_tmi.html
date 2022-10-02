@@ -17,6 +17,7 @@
             var options = {
                 channel: undefined,
                 enableUserColors: true,
+                enableDerivedUserColor: true,
                 enableUserBadges: true,
                 badgeBaseSize: 'image_url_1x',
                 enableActionColors: true,
@@ -30,6 +31,7 @@
             var node_log = $(document.body);
             var badge_sets_cache = undefined;
             var badge_sets_cache_state=0;
+            var user_color_cache = {};
 
             function replaceEmotes(message, emotes) { 
                 // based on https://github.com/tmijs/tmi.js/issues/11
@@ -55,6 +57,26 @@
 
                 return newMessage.join("");
             }
+            
+            function getUserColor(username) {
+                let result = user_color_cache[username];
+                if (result == undefined) {
+                    // based on: https://stackoverflow.com/questions/3426404/create-a-hexadecimal-result-based-on-a-string-with-javascript
+                    var hash = 0;
+                    for (var i = 0; i < username.length; i++) {
+                        hash = username.charCodeAt(i) + ((hash << 5) - hash);
+                    }
+                    
+                    result = '#';
+                    for (var i = 0; i < 3; i++) {
+                        var value = (hash >> (i * 8)) & 0xFF;
+                        result += ('00' + value.toString(16)).substr(-2);
+                    }
+
+                    user_color_cache[username] = result;
+                }
+                return result;
+            }            
 
             async function get_badge_url(badgename, badge_detail, room_id) {
 
@@ -159,9 +181,9 @@
                         if (options.enableUserColors) {
                             if (tags.color) {
                                 $u.css('color', tags.color);
-                            } else {
-                                $u.addClass('nc');
-                            }                            
+                            } else if (options.enableDerivedUserColor) {
+                                $u.addClass('nc').css('color', getUserColor(tags['display-name']));
+                            }
                         }
 
                         $e.append($u).append($('<span/>').text(isActionMessage?' ':': '));
