@@ -28,7 +28,8 @@
             }
             
             var node_log = $(document.body);
-            var badge_sets_cache = undefined, badge_cache = {};
+            var badge_sets_cache = undefined;
+            var badge_sets_cache_state=0;
 
             function replaceEmotes(message, emotes) { 
                 // based on https://github.com/tmijs/tmi.js/issues/11
@@ -57,51 +58,75 @@
 
             async function get_badge_url(badgename, badge_detail, room_id) {
 
-                if (badge_sets_cache == undefined) {
+                let badge_sets_cache_local = badge_sets_cache_state;
+                if (badge_sets_cache_state == 1) {
                     
-                    badge_sets_cache = {};
-                    let g_cache = {}, c_cache = {}; 
-                    
-                    try {
-                        g_cache = await $.ajax({
-                                method: 'GET',
-                                url: "https://badges.twitch.tv/v1/badges/global/display",
-                                dataType: "jsonp"
-                        });
-                        g_cache = g_cache['badge_sets'];
-                    } catch (e) {
-                        console.error("error getting global badges", e);
-                    }
-
                     if (room_id) {
                         try {
-                            c_cache = await $.ajax({
-                                    method: 'GET',
-                                    url: "https://badges.twitch.tv/v1/badges/channels/"+room_id+"/display",
-                                    dataType: "jsonp"
-                            });
+                            badge_sets_cache_state = 2;
+                            let c_cache = await $.ajax({ url: "https://badges.twitch.tv/v1/badges/channels/"+room_id+"/display", dataType: "json", method: 'GET'});
                             c_cache = c_cache['badge_sets'];
+                            $.extend(badge_sets_cache,c_cache);
                         } catch (e) {
-                            console.error("error getting global badges", e);
-                        }                    
+                            console.error("error getting channel badges", e);
+                        }
+
+                        badge_sets_cache_state = 3;
+                        badge_sets_cache_local = 3;
+
+                        // fix possible wrong badges
+                        window.setTimeout(() => {
+                            $('img.badge').each(async function (index, elem) {
+                                try {
+                                    let $elem = $(elem);
+                                    let parts = $elem.attr('src').split('#');
+                                    if (parts.length > 1) {
+                                        let url = await get_badge_url(parts[1], parts[2]);
+                                        if (url) {
+                                            $elem.attr('src', url);
+                                        }
+                                    }
+                                } catch (e) {
+                                    ;
+                                }
+                            });
+                        }, 1000);
                     }
+
+                }
+
+                try {
                     
-                    $.extend(badge_sets_cache,g_cache, c_cache);
-                }
-                
-                // Cache the found url, mostly so that we log errors just once
-                const cacheKey = badgename+"/"+badge_detail;
-                let result = badge_cache[cacheKey];
-                if (result == undefined) {
-                    try {
-                        result = badge_sets_cache[badgename]['versions'][badge_detail][options.badgeBaseSize];
-                        badge_cache[cacheKey] = result;
-                    } catch (e) {
-                        badge_cache[cacheKey] = '';
-                        console.error('can not get badge url', badgename, badge_detail)
+                    // when badge_sets_cache_state = 2, this may result in the default-badge instead of the channel one
+                    // if the second message comes in before the first one is ready
+                    if (badge_sets_cache_local == 3) {
+                        return badge_sets_cache[badgename]['versions'][badge_detail][options.badgeBaseSize];
+                    } else {
+                        return badge_sets_cache[badgename]['versions'][badge_detail][options.badgeBaseSize] + '#'+badgename+'#'+badge_detail;
+                    }
+
+                } catch (e) {
+                    // Means we are still loading the badge_sets, can haben if initial messages are too fast
+                    if (badge_sets_cache_state == 2 || badge_sets_cache_state == 1) {
+                        console.warn('can not get badge url, but badge_sets still loading', {badge_name: badgename, badge_detail: badge_detail});
+                        if (badgename == 'subscriber' || badgename == 'bits') {
+                            return badge_sets_cache[badgename]['versions'][1][options.badgeBaseSize] + '#'+badgename+'#'+badge_detail;
+                        }
+                        return undefined; //return nothing for now, no caching, try again next time                   
+                    } else { 
+                        console.error('can not get badge url', {badge_name: badgename, badge_detail: badge_detail});
+                        // make sure we find it next time, this way we see the message only once
+                        if (badge_sets_cache[badgename] == undefined) {
+                            badge_sets_cache[badgename] = {versions: {}};
+                        }
+                        if (badge_sets_cache[badgename]['versions'][badge_detail] == undefined) {
+                            badge_sets_cache[badgename]['versions'][badge_detail] = {};
+                        }
+                        if (badge_sets_cache[badgename]['versions'][badge_detail][options.badgeBaseSize] == undefined) {
+                            badge_sets_cache[badgename]['versions'][badge_detail][options.badgeBaseSize] = '';
+                        }
                     }
                 }
-                return result;
             }
 
             async function appendToLog(message, tags) {
@@ -179,7 +204,17 @@
                 }
             }
 
+            /* initialize everything */        
             appendToLog("Start Chat @ " + new Date().toLocaleString());        
+
+            try {
+                badge_sets_cache = await $.ajax({ url: "https://badges.twitch.tv/v1/badges/global/display", dataType: "json", method: 'GET' });
+                badge_sets_cache = badge_sets_cache['badge_sets'];
+            } catch (e) {
+                badge_sets_cache = {};
+                console.error("error getting global badges", e);
+            }            
+            badge_sets_cache_state = 1;
             
             let searchParams = new URLSearchParams(window.location.search);
             for (const optionName in options) {
