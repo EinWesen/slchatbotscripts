@@ -210,11 +210,6 @@
 
                         $e.append($u).append($('<span/>').text(isActionMessage?' ':': '));
                     }
-
-                    if (tags.emotes) {
-                         
-                        message = replaceEmotes(message, tags.emotes);
-                    }
                     
                     if (isActionMessage) {
                         $e.addClass('action');
