@@ -24,7 +24,8 @@
                 enableActionColors: true,
                 emoteBaseSize: '1.0', //1.0, 2.0,3.0
                 emoteTheme: 'light',
-                emoteSize: 16,                
+                emoteSize: 16,
+                emoteJoin: false,
                 autodelete: true,
                 autoscroll: true,
                 debugLogTags: false
@@ -34,30 +35,49 @@
             var badge_sets_cache = undefined;
             var badge_sets_cache_state=0;
             var user_color_cache = {};
+            
+            function replaceRange(arry, start,end, val) {
+                for(let d = start;d<=end; d++) {
+                    arry[d] = "";
+                }                  
+                arry[start] = val;
+            }            
 
             function replaceEmotes(message, emotes) { 
                 // based on https://github.com/tmijs/tmi.js/issues/11
-                var newMessage = message.split("");
+                let newMessage = message.split("");
+                let emoteCount = 0;
 
-                for(var emoteIndex in emotes) {
-                    var emote = emotes[emoteIndex];
-
-                    for(var charIndexes in emote) {
-                        var emoteIndexes = emote[charIndexes];
-
+                for(const emoteIndex in emotes) {
+                    const emote = emotes[emoteIndex];
+                    for(const charIndexes in emote) {
+                        let emoteIndexes = emote[charIndexes];
                         if(typeof emoteIndexes == "string") {
-                            emoteIndexes = emoteIndexes.split("-");
-                            emoteIndexes = [parseInt(emoteIndexes[0]), parseInt(emoteIndexes[1])];
-
-                            for(var i = emoteIndexes[0]; i <= emoteIndexes[1]; ++i) {
-                                newMessage[i] = "";
-                            }
-                            newMessage[emoteIndexes[0]] = '<img src="http://static-cdn.jtvnw.net/emoticons/v2/' + emoteIndex + '/default/'+options.emoteTheme+'/'+options.emoteBaseSize+'"'+(options.emoteSize>0?' height="'+options.emoteSize+'"':'')+'>';
+                            emoteIndexes = emoteIndexes.split("-");                            
+                            replaceRange(newMessage, parseInt(emoteIndexes[0]), parseInt(emoteIndexes[1]), '<img src="http://static-cdn.jtvnw.net/emoticons/v2/' + emoteIndex + '/default/'+options.emoteTheme+'/'+options.emoteBaseSize+'"'+(options.emoteSize>0?' height="'+options.emoteSize+'"':'')+'>');
+                            emoteCount++;
                         }
                     }
                 }
+                
+                // now lets sanitize the whole thing
+                let $sanitize = $('<dummy/>');
+                let tail =0; 
+                for (let idx=0; idx<newMessage.length;idx++) {
+                    if (newMessage[idx].startsWith('<img')) {
+                        if (idx>tail) {
+                            replaceRange(newMessage, tail, idx-1,$sanitize.text(newMessage.slice(tail, idx).join("")).html());
+                        }
+                        tail = idx+1;
+                    }
+                }
+                replaceRange(newMessage, tail, newMessage.length-1,$sanitize.text(newMessage.slice(tail, newMessage.length).join("")).html());
 
-                return newMessage.join("");
+                if (options.emoteJoin && emoteCount>1) {
+                    return newMessage.join("").replaceAll('> <img ', '><img ');
+                } else {
+                    return newMessage.join("");
+                }
             }
             
             function getUserColor(username) {
@@ -207,10 +227,15 @@
                         $e.addClass('js-error');
                     }
 
-                }
-
-                // Should be safe, messages recieved from twitch seems to sanitized
-                $e.append($('<span/>').attr('class', 'msg').html(message)); 
+                    if (tags.emotes) {                         
+                        $e.append($('<span/>').attr('class', 'msg').html(replaceEmotes(message, tags.emotes)));
+                    } else {
+                        $e.append($('<span/>').attr('class', 'msg').text(message));
+                    }
+                    
+                } else {
+                    $e.append($('<span/>').attr('class', 'msg').text(message));
+                } 
                 
                 node_log.append($e);
 
