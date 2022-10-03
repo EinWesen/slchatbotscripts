@@ -84,14 +84,14 @@
                 let result = user_color_cache[username];
                 if (result == undefined) {
                     // based on: https://stackoverflow.com/questions/3426404/create-a-hexadecimal-result-based-on-a-string-with-javascript
-                    var hash = 0;
-                    for (var i = 0; i < username.length; i++) {
+                    let hash = 0;
+                    for (let i = 0; i < username.length; i++) {
                         hash = username.charCodeAt(i) + ((hash << 5) - hash);
                     }
                     
                     result = '#';
-                    for (var i = 0; i < 3; i++) {
-                        var value = (hash >> (i * 8)) & 0xFF;
+                    for (let i = 0; i < 3; i++) {
+                        const value = (hash >> (i * 8)) & 0xFF;
                         result += ('00' + value.toString(16)).substr(-2);
                     }
 
