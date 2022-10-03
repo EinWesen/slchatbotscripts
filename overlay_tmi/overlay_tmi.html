@@ -230,15 +230,6 @@
 
             /* initialize everything */        
             appendToLog("Start Chat @ " + new Date().toLocaleString());        
-
-            try {
-                badge_sets_cache = await $.ajax({ url: "https://badges.twitch.tv/v1/badges/global/display", dataType: "json", method: 'GET' });
-                badge_sets_cache = badge_sets_cache['badge_sets'];
-            } catch (e) {
-                badge_sets_cache = {};
-                console.error("error getting global badges", e);
-            }            
-            badge_sets_cache_state = 1;
             
             let searchParams = new URLSearchParams(window.location.search);
             for (const optionName in options) {
@@ -252,6 +243,17 @@
                         options[optionName] = option;
                     }
                 }              
+            }            
+            
+            if (options.enableUserBadges) {
+                try {
+                    badge_sets_cache = await $.ajax({ url: "https://badges.twitch.tv/v1/badges/global/display", dataType: "json", method: 'GET' });
+                    badge_sets_cache = badge_sets_cache['badge_sets'];
+                } catch (e) {
+                    badge_sets_cache = {};
+                    console.error("error getting global badges", e);
+                }            
+                badge_sets_cache_state = 1;
             }            
 
             window.tmiCLient = new tmi.Client({
