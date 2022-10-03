@@ -14,7 +14,7 @@
     <script>
         jQuery(document).ready(async function ($) {
             
-            var options = {
+            const options = {
                 channel: undefined,
                 enableUserColors: true,
                 enableDerivedUserColor: true,
@@ -31,10 +31,10 @@
                 debugLogTags: false
             }
             
-            var node_log = $(document.body);
-            var badge_sets_cache = undefined;
-            var badge_sets_cache_state=0;
-            var user_color_cache = {};
+            const node_log = $(document.body);
+            const user_color_cache = {};            
+            let badge_sets_cache = undefined;
+            let badge_sets_cache_state=0;
             
             function replaceRange(arry, start,end, val) {
                 for(let d = start;d<=end; d++) {
