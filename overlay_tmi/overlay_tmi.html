@@ -256,6 +256,35 @@
                 badge_sets_cache_state = 1;
             }            
 
+            if (!options.autodelete && options.autoscroll) {
+                
+                $(document.body).on('wheel', (event)=>{
+                    if (event.originalEvent.deltaY < 0) {
+                        options.autoscroll = false;
+                        $(document.body).css('border', 'solid 5px red');
+                    } else {
+                        let st = node_log.prop('scrollTop'), sh = node_log.prop('scrollHeight'), ch = node_log.prop('clientHeight');
+                        if ((st+ch) >= (sh-20)) {
+                            $(document.body).css('border', '');
+                            options.autoscroll =  true;
+                        }                    
+                    }
+                });
+
+                $(document.body).on('touchstart', (event)=>{
+                    options.autoscroll = false;
+                    $(document.body).css('border', 'solid 5px orange');
+                });
+
+                $(document.body).on('touchend', (event)=>{
+                    let st = node_log.prop('scrollTop'), sh = node_log.prop('scrollHeight'), ch = node_log.prop('clientHeight');
+                    if ((st+ch) >= (sh-100)) {
+                        $(document.body).css('border', '');
+                        options.autoscroll =  true;
+                    }                                              
+                }); 
+            }
+            
             window.tmiCLient = new tmi.Client({
                 channels: [ options.channel ],
                 connection: {
