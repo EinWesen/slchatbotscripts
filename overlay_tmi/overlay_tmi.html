@@ -25,7 +25,7 @@
                 emoteBaseSize: '1.0', //1.0, 2.0,3.0
                 emoteTheme: 'light',
                 emoteSize: 16,
-                emoteJoin: false,
+                emoteJoinEnabled: false,
                 autodelete: true,
                 autoscroll: true,
                 debugLogTags: false
@@ -73,7 +73,7 @@
                 }
                 replaceRange(newMessage, tail, newMessage.length-1,$sanitize.text(newMessage.slice(tail, newMessage.length).join("")).html());
 
-                if (options.emoteJoin && emoteCount>1) {
+                if (options.emoteJoinEnabled && emoteCount>1) {
                     return newMessage.join("").replaceAll('> <img ', '><img ');
                 } else {
                     return newMessage.join("");
