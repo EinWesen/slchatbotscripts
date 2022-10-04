@@ -114,6 +114,7 @@
                             c_cache = c_cache['badge_sets'];
                             $.extend(badge_sets_cache,c_cache);
                         } catch (e) {
+                            appendToLog("error getting channel badges", {"message-type": "js-error"});
                             console.error("error getting channel badges", e);
                         }
 
@@ -266,7 +267,30 @@
                         options[optionName] = option;
                     }
                 }              
-            }            
+            }
+
+            for (const [optionName, value] of searchParams) {
+                if (!(optionName in options)) {
+                    appendToLog("Unknown queryParamter: " + optionName, {"message-type": "js-error"});
+                }
+            }
+
+            if (typeof options.messageOverflow == 'string') {
+                if (options.messageOverflow == 'hidden') {
+                    options.messageOverflow = MSG_OVERFLOW_HIDDEN;
+                } else if (options.messageOverflow == 'auto') {
+                    options.messageOverflow = MSG_OVERFLOW_AUTO;
+                } else if (options.messageOverflow == 'scroll') {
+                    options.messageOverflow = MSG_OVERFLOW_SCROLL;
+                } else {                                        
+                    appendToLog("Unknown messageOverflow option: " + options.messageOverflow, {"message-type": "js-error"});
+                    options.messageOverflow = MSG_OVERFLOW_HIDDEN;
+                }
+            }
+
+            if (node_log.children().length > 1) {
+                node_log.append($("<div/>").addClass('js-error').html('Check the <a target="_blank" href="https://github.com/EinWesen/slchatbotscripts/wiki/Overlay:-TMI">wiki</a>'));
+            }
 
             if (options.enableUserBadges) {
                 try {
@@ -274,6 +298,7 @@
                     badge_sets_cache = badge_sets_cache['badge_sets'];
                 } catch (e) {
                     badge_sets_cache = {};
+                    appendToLog("error getting global badges", {"message-type": "js-error"});
                     console.error("error getting global badges", e);
                 }            
                 badge_sets_cache_state = 1;
@@ -327,7 +352,7 @@
             });
             
             window.tmiCLient.on("reconnect", () => {
-                appendToLog("----- ~~~ -----");
+                appendToLog("----- ~~~ -----", {"message-type": "js-error"});
             });           
               
             window.tmiCLient.on('message', (channel, tags, message, self) => {
