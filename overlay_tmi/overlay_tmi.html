@@ -13,8 +13,11 @@
     <script src="https://github.com/tmijs/tmi.js/releases/download/v1.8.5/tmi.min.js"></script>    
     <script>
         jQuery(document).ready(async function ($) {
-            
-            const options = {
+            const MSG_OVERFLOW_HIDDEN = 0;              // Delete old messages until the new messages fits on screen
+            const MSG_OVERFLOW_AUTO   = 1;              // Automatically scroll to the bottom after adding a message, delete old message on a timer
+            const MSG_OVERFLOW_SCROLL = 2;              // just add messages at the bottom
+
+            const options = {                           // Holds the customizable options
                 channel: undefined,
                 enableUserColors: true,
                 enableDerivedUserColor: true,
@@ -22,27 +25,26 @@
                 badgeBaseSize: 'image_url_1x',
                 badgeSize: 0,
                 enableActionColors: true,
-                emoteBaseSize: '1.0', //1.0, 2.0,3.0
+                emoteBaseSize: '1.0',                   //1.0, 2.0,3.0
                 emoteTheme: 'light',
                 emoteSize: 16,
                 emoteJoinEnabled: false,
-                autodelete: true,
-                autoscroll: true,
-                debugLogTags: false
+                messageOverflow: MSG_OVERFLOW_HIDDEN,
+                maxMessages: 100,                       // Messages to always keep for overflow:auto. 0 disables it.
+                debugLogTags: false                     // Log tags to console
             }
             
-            const node_log = $(document.body);
-            const user_color_cache = {};            
-            let badge_sets_cache = undefined;
-            let badge_sets_cache_state=0;
-            
+            const node_log = $(document.body);          // Node messages will be appended to 
+            const user_color_cache = {};                // Mapping form user -> color, for users without a defined one
+            let badge_sets_cache = undefined;           // Holds bade_sets definitions     
+            let badge_sets_cache_state=0;               // 0 = Nothing cached, 1 = globals loaded, 2 = loading channel, 3 = fully loaded 
+
             function replaceRange(arry, start,end, val) {
                 for(let d = start;d<=end; d++) {
                     arry[d] = "";
                 }                  
                 arry[start] = val;
-            }            
-
+            }
             function replaceEmotes(message, emotes) { 
                 // based on https://github.com/tmijs/tmi.js/issues/11
                 let newMessage = message.split("");
@@ -210,6 +212,7 @@
 
                         $e.append($u).append($('<span/>').text(isActionMessage?' ':': '));
                     }
+
                     
                     if (isActionMessage) {
                         $e.addClass('action');
@@ -217,30 +220,29 @@
                             $e.css('color', $e.find('span.usr').css('color'));
                         }
                     }
-
+                    
                     if (tags['message-type'] == 'js-error') {
                         $e.addClass('js-error');
                     }
-
+                    
                     if (tags.emotes) {                         
                         $e.append($('<span/>').attr('class', 'msg').html(replaceEmotes(message, tags.emotes)));
                     } else {
-                        $e.append($('<span/>').attr('class', 'msg').text(message));
+                        $e.append($('<span/>').attr('class', 'msg').text(message));    
                     }
-                    
                 } else {
                     $e.append($('<span/>').attr('class', 'msg').text(message));
-                } 
+                }                
                 
                 node_log.append($e);
 
-                if (options.autodelete) {
+                if (options.messageOverflow==MSG_OVERFLOW_HIDDEN) {
                     let children = node_log.children('div:not(:last)');
                     while ((children.length > 0) && (node_log.prop('scrollHeight') > node_log.prop('clientHeight'))) {
                         children.eq(0).remove();
                         children = node_log.children('div:not(:last)')
                     }
-                } else if (options.autoscroll) {
+                } else if (options.messageOverflow==MSG_OVERFLOW_AUTO) {
                     let ch = node_log.prop('clientHeight'), sh = node_log.prop('scrollHeight');
                     if (sh>ch) {
                         node_log.prop('scrollTop', sh);
@@ -248,6 +250,7 @@
                 }
             }
 
+            
             /* initialize everything */        
             appendToLog("Start Chat @ " + new Date().toLocaleString());        
             
@@ -264,7 +267,7 @@
                     }
                 }              
             }            
-            
+
             if (options.enableUserBadges) {
                 try {
                     badge_sets_cache = await $.ajax({ url: "https://badges.twitch.tv/v1/badges/global/display", dataType: "json", method: 'GET' });
@@ -274,35 +277,45 @@
                     console.error("error getting global badges", e);
                 }            
                 badge_sets_cache_state = 1;
-            }            
-
-            if (!options.autodelete && options.autoscroll) {
+            }
+            
+            if (options.messageOverflow==MSG_OVERFLOW_AUTO) {
                 
-                $(document.body).on('wheel', (event)=>{
-                    if (event.originalEvent.deltaY < 0) {
-                        options.autoscroll = false;
-                        $(document.body).css('border', 'solid 5px red');
-                    } else {
+                // if set to auto, we want to prevent scrolling if the user is scrolling themselves
+                $(document.body).on({
+                    
+                    'wheel': (event)=>{
+                        if (event.originalEvent.deltaY < 0) {
+                            options.messageOverflow = MSG_OVERFLOW_SCROLL;
+                            $(document.body).css('border', 'solid 5px red');
+                        } else {
+                            let st = node_log.prop('scrollTop'), sh = node_log.prop('scrollHeight'), ch = node_log.prop('clientHeight');
+                            if ((st+ch) >= (sh-20)) {
+                                $(document.body).css('border', '');
+                                options.messageOverflow = MSG_OVERFLOW_AUTO;
+                            }                    
+                        }
+                    },
+
+                    'touchstart': (event)=>{
+                        options.messageOverflow = MSG_OVERFLOW_SCROLL;
+                        $(document.body).css('border', 'solid 5px orange');
+                    },
+
+                    'touchend': (event)=>{
                         let st = node_log.prop('scrollTop'), sh = node_log.prop('scrollHeight'), ch = node_log.prop('clientHeight');
-                        if ((st+ch) >= (sh-20)) {
+                        if ((st+ch) >= (sh-100)) {
                             $(document.body).css('border', '');
-                            options.autoscroll =  true;
-                        }                    
+                            options.messageOverflow = MSG_OVERFLOW_AUTO;
+                        }                                              
                     }
                 });
 
-                $(document.body).on('touchstart', (event)=>{
-                    options.autoscroll = false;
-                    $(document.body).css('border', 'solid 5px orange');
-                });
-
-                $(document.body).on('touchend', (event)=>{
-                    let st = node_log.prop('scrollTop'), sh = node_log.prop('scrollHeight'), ch = node_log.prop('clientHeight');
-                    if ((st+ch) >= (sh-100)) {
-                        $(document.body).css('border', '');
-                        options.autoscroll =  true;
-                    }                                              
-                }); 
+                if (options.maxMessages > 0) {
+                    window.setInterval(()=>{
+                        node_log.children(':not(:nth-last-child(-n+'+options.maxMessages+'))').remove();
+                    },5*60*1000);
+                }                
             }
             
             window.tmiCLient = new tmi.Client({
@@ -312,7 +325,7 @@
                     secure: true
                 }
             });
-
+            
             window.tmiCLient.on("reconnect", () => {
                 appendToLog("----- ~~~ -----");
             });           
