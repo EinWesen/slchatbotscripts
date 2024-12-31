@@ -132,8 +132,12 @@
                         try {
                             badge_sets_cache_state = 2;
                             let c_cache = await twitchApiGet("https://api.twitch.tv/helix/chat/badges?broadcaster_id="+room_id);
-                            c_cache.data.forEach((entry1, index1) => {
-                                badge_sets_cache[entry1.set_id] = entry1;
+                            c_cache.data.forEach((entry, index1) => {
+                                let versions = {};
+                                entry.versions.forEach((version_entry, version_index) => {
+                                    versions[version_entry.id] = version_entry;
+                                });
+                                badge_sets_cache[entry.set_id] = versions;
                             });                        
                         } catch (e) {
                             appendToLog("error getting channel badges", {"message-type": "js-error"});
@@ -168,9 +172,9 @@
                     // when badge_sets_cache_state = 2, this may result in the default-badge instead of the channel one
                     // if the second message comes in before the first one is ready
                     if (badge_sets_cache_local == 3) {
-                        return badge_sets_cache[badgename]['versions'][badge_detail][options.badgeBaseSize];
+                        return badge_sets_cache[badgename][badge_detail][options.badgeBaseSize];
                     } else {
-                        return badge_sets_cache[badgename]['versions'][badge_detail][options.badgeBaseSize] + '#'+badgename+'#'+badge_detail;
+                        return badge_sets_cache[badgename][badge_detail][options.badgeBaseSize] + '#'+badgename+'#'+badge_detail;
                     }
 
                 } catch (e) {
@@ -178,20 +182,20 @@
                     if (badge_sets_cache_state == 2 || badge_sets_cache_state == 1) {
                         console.warn('can not get badge url, but badge_sets still loading', {badge_name: badgename, badge_detail: badge_detail});
                         if (badgename == 'subscriber' || badgename == 'bits') {
-                            return badge_sets_cache[badgename]['versions'][1][options.badgeBaseSize] + '#'+badgename+'#'+badge_detail;
+                            return badge_sets_cache[badgename][1][options.badgeBaseSize] + '#'+badgename+'#'+badge_detail;
                         }
                         return undefined; //return nothing for now, no caching, try again next time                   
                     } else { 
                         console.error('can not get badge url', {badge_name: badgename, badge_detail: badge_detail});
                         // make sure we find it next time, this way we see the message only once
                         if (badge_sets_cache[badgename] == undefined) {
-                            badge_sets_cache[badgename] = {versions: {}};
+                            badge_sets_cache[badgename] = {};
                         }
-                        if (badge_sets_cache[badgename]['versions'][badge_detail] == undefined) {
-                            badge_sets_cache[badgename]['versions'][badge_detail] = {};
+                        if (badge_sets_cache[badgename][badge_detail] == undefined) {
+                            badge_sets_cache[badgename][badge_detail] = {};
                         }
-                        if (badge_sets_cache[badgename]['versions'][badge_detail][options.badgeBaseSize] == undefined) {
-                            badge_sets_cache[badgename]['versions'][badge_detail][options.badgeBaseSize] = '';
+                        if (badge_sets_cache[badgename][badge_detail][options.badgeBaseSize] == undefined) {
+                            badge_sets_cache[badgename][badge_detail][options.badgeBaseSize] = '';
                         }
                     }
                 }
@@ -326,7 +330,7 @@
                         entry.versions.forEach((version_entry, version_index) => {
                             versions[version_entry.id] = version_entry;
                         });
-                        badge_sets_cache[entry.set_id] = {'versions' : versions};
+                        badge_sets_cache[entry.set_id] = versions;
                     });
                 } catch (e) {
                     badge_sets_cache = {};
