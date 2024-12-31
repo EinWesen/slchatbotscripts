@@ -1,8 +1,16 @@
+<!DOCTYPE html>
 <html>
 <head>
     <style type="text/css">
+        :root {
+            @property --chat-font-size {
+                syntax: "<legth>";
+                inherits: true;
+                initial-value: 18px;
+            }
+        }
         body {
-            font-Size: 18px;
+            font-Size: var(--chat-font-size);
             font-family: sans-serif;
         }
         img, span {
@@ -29,11 +37,12 @@
                 emoteTheme: 'light',
                 emoteSize: 16,
                 emoteJoinEnabled: false,
+                fontSize: undefined,
                 messageOverflow: MSG_OVERFLOW_HIDDEN,
                 maxMessages: 100,                       // Messages to always keep for overflow:auto. 0 disables it.
                 debugLogTags: false                     // Log tags to console
             }
-            
+                        
             const node_log = $(document.body);          // Node messages will be appended to 
             const user_color_cache = {};                // Mapping form user -> color, for users without a defined one
             let badge_sets_cache = undefined;           // Holds bade_sets definitions     
@@ -304,6 +313,16 @@
                 badge_sets_cache_state = 1;
             }
             
+            if (options.fontSize) {
+                const document_root = document.querySelector(':root');
+                const font_size_type = (typeof options.fontSize);
+                if (font_size_type == 'string') {
+                    document_root.style.setProperty("--chat-font-size", options.fontSize);
+                } else if (font_size_type == 'number') {
+                    document_root.style.setProperty("--chat-font-size", options.fontSize + 'px');
+                }
+            }
+
             if (options.messageOverflow==MSG_OVERFLOW_AUTO) {
                 
                 // if set to auto, we want to prevent scrolling if the user is scrolling themselves
