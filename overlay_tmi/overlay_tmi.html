@@ -40,7 +40,9 @@
                 fontSize: undefined,
                 messageOverflow: MSG_OVERFLOW_HIDDEN,
                 maxMessages: 100,                       // Messages to always keep for overflow:auto. 0 disables it.
-                debugLogTags: false                     // Log tags to console
+                debugLogTags: false,                     // Log tags to console
+                clientId: undefined,
+                accessToken: undefined
             }
                         
             const node_log = $(document.body);          // Node messages will be appended to 
@@ -48,6 +50,17 @@
             let badge_sets_cache = undefined;           // Holds bade_sets definitions     
             let badge_sets_cache_state=0;               // 0 = Nothing cached, 1 = globals loaded, 2 = loading channel, 3 = fully loaded 
 
+            function twitchApiGet(api_endpoint_url) {
+                return $.ajax({ 
+                    url: api_endpoint_url, 
+                    dataType: "json", 
+                    method: 'GET', 
+                    headers: {
+                        'Authorization': 'Bearer ' + options.accessToken, 
+                        'Client-Id' : options.clientId
+                    }
+                });
+            }
             function replaceRange(arry, start,end, val) {
                 for(let d = start;d<=end; d++) {
                     arry[d] = "";
@@ -58,7 +71,6 @@
                 // based on https://github.com/tmijs/tmi.js/issues/11
                 let newMessage = message.split("");
                 let emoteCount = 0;
-
                 for(const emoteIndex in emotes) {
                     const emote = emotes[emoteIndex];
                     for(const charIndexes in emote) {
@@ -119,9 +131,10 @@
                     if (room_id) {
                         try {
                             badge_sets_cache_state = 2;
-                            let c_cache = await $.ajax({ url: "https://badges.twitch.tv/v1/badges/channels/"+room_id+"/display", dataType: "json", method: 'GET'});
-                            c_cache = c_cache['badge_sets'];
-                            $.extend(badge_sets_cache,c_cache);
+                            let c_cache = await twitchApiGet("https://api.twitch.tv/helix/chat/badges?broadcaster_id="+room_id);
+                            c_cache.data.forEach((entry1, index1) => {
+                                badge_sets_cache[entry1.set_id] = entry1;
+                            });                        
                         } catch (e) {
                             appendToLog("error getting channel badges", {"message-type": "js-error"});
                             console.error("error getting channel badges", e);
@@ -152,7 +165,6 @@
                 }
 
                 try {
-                    
                     // when badge_sets_cache_state = 2, this may result in the default-badge instead of the channel one
                     // if the second message comes in before the first one is ready
                     if (badge_sets_cache_local == 3) {
@@ -301,10 +313,21 @@
                 node_log.append($("<div/>").addClass('js-error').html('Check the <a target="_blank" href="https://github.com/EinWesen/slchatbotscripts/wiki/Overlay:-TMI">wiki</a>'));
             }
 
+            if (options.enableUserBadges && (options.accessToken == undefined || options.clientId == undefined)) {
+                options.enableUserBadges = false;
+                appendToLog("Badges disabled due to missing API settings", {"message-type": "js-error"});
+            }
             if (options.enableUserBadges) {
                 try {
-                    badge_sets_cache = await $.ajax({ url: "https://badges.twitch.tv/v1/badges/global/display", dataType: "json", method: 'GET' });
-                    badge_sets_cache = badge_sets_cache['badge_sets'];
+                    let global_badge_data = await twitchApiGet("https://api.twitch.tv/helix/chat/badges/global");
+                    badge_sets_cache = {};
+                    global_badge_data.data.forEach((entry, index) => {
+                        let versions = {};
+                        entry.versions.forEach((version_entry, version_index) => {
+                            versions[version_entry.id] = version_entry;
+                        });
+                        badge_sets_cache[entry.set_id] = {'versions' : versions};
+                    });
                 } catch (e) {
                     badge_sets_cache = {};
                     appendToLog("error getting global badges", {"message-type": "js-error"});
